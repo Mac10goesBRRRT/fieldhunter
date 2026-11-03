@@ -30,5 +30,12 @@ Not sure about a licence right now.
 Clone the repository including the nemere submodule:
 ```git clone --recurse-submodules git@github.com:vs-uulm/nemesys.git```
 
+## Building
+```docker build -t fieldhunter .```
+
+
+## Running
+```sudo docker run --rm -it -v "$PWD":/app fieldhunter```
+
 
 
