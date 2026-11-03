@@ -1,3 +1,3 @@
 [submodule "sub/nemere"]
 	path = sub/nemere
-	url = git@github.com:vs-uulm/nemesys.git
+	url = https://github.com/vs-uulm/nemesys.git
