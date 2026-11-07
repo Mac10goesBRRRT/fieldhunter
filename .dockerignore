@@ -1,3 +1,9 @@
-.venv
 .git
+.github
+.gitmodules
+.gitignore
+.idea
+.venv
+run.log
+input
 reports

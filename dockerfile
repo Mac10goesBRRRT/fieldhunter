@@ -15,6 +15,14 @@ RUN grep -vi '^pcapy' /tmp/req-nemere.txt > /tmp/req-nemere-clean.txt \
  && /venv/bin/pip install -r /tmp/req-fh.txt -r /tmp/req-nemere-clean.txt \
       pcapy-ng tabulate ipython
 
+COPY . /app/
+
+# input/ und reports/ leer anlegen, hier wird später gemountet
+RUN mkdir -p /app/input /app/reports \
+ && chmod 777 /app/reports \
+ && chmod +x /app/*.sh
+
+ 
 ENV PYTHONPATH=/app/src:/app/sub/nemere/src
 ENV PATH=/venv/bin:$PATH
 #handle spd-say
