@@ -1,5 +1,22 @@
 # FieldHunter
 
+Docker-Packaged version of Fieldhunter to be able to reliably run it on different machines. The Code itself wasnt changed.
+
+## Setup
+
+```sh
+docker run --rm -it -e HOME=/tmp \
+    -v "$PWD/input":/app/input \
+    -v "$PWD/reports":/app/reports \
+    cuacuac/fieldhunter:master
+# then run the python scripts with whatever input you want
+python src/fh.py input/maxdiff-fromOrig/dns_ictf2010-new_maxdiff-100.pcap
+# or with the newer, improved heuristics
+python src/fh-relaxed.py input/maxdiff-fromOrig/dns_ictf2010-new_maxdiff-100.pcap
+```
+
+## Original Text
+
 Re-implementation of parts of the protocol reverse engineering approach FieldHunter (FH) as proposed in 
 
 > Bermudez, Ignacio, Alok Tongaonkar, Marios Iliofotou, Marco Mellia, und Maurizio M. Munafò. 
@@ -31,6 +48,7 @@ Clone the repository including the nemere submodule:
 ```git clone --recurse-submodules git@github.com:vs-uulm/nemesys.git```
 
 ## Building
+Local building of the container
 ```docker build -t fieldhunter .```
 
 
