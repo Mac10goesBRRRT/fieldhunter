@@ -5,10 +5,7 @@ Docker-Packaged version of Fieldhunter to be able to reliably run it on differen
 ## Setup
 
 ```sh
-docker run --rm -it -e HOME=/tmp \
-    -v "$PWD/input":/app/input \
-    -v "$PWD/reports":/app/reports \
-    cuacuac/fieldhunter:master
+docker run --rm -it -e HOME=/tmp -v "${PWD}/sub/nemere/input:/app/input" -v "${PWD}/reports:/app/reports" cuacuac/fieldhunter:master
 # then run the python scripts with whatever input you want
 python src/fh.py input/maxdiff-fromOrig/dns_ictf2010-new_maxdiff-100.pcap
 # or with the newer, improved heuristics
@@ -54,6 +51,3 @@ Local building of the container
 
 ## Running
 ```sudo docker run --rm -it -v "$PWD":/app fieldhunter```
-
-
-
