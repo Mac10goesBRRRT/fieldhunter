@@ -12,8 +12,35 @@ docker run --rm -it -e HOME=/tmp \
 # then run the python scripts with whatever input you want
 python src/fh.py input/maxdiff-fromOrig/dns_ictf2010-new_maxdiff-100.pcap
 # or with the newer, improved heuristics
-python src/fh-relaxed.py input/maxdiff-fromOrig/dns_ictf2010-new_maxdiff-100.pcap
+python src/fh_relaxed.py input/maxdiff-fromOrig/dns_ictf2010-new_maxdiff-100.pcap
 ```
+
+## Raw inferred fields per message
+
+Both scripts support exporting inference results independently of ground truth:
+
+```sh
+python src/fh_relaxed.py input/capture.pcap --export-raw reports/raw-fields.json --no-evaluation
+# The same options work with src/fh.py.
+```
+
+The JSON contains the input PCAP path and a `messages` array. Each imported
+message includes its ID, timestamp (Unix seconds), source/destination IP and port,
+transport protocol, complete `payload_hex`, and a `fields` array. Each field has
+`type`, `offset`, `length`, `end`, and `hex`. Offsets are zero-based byte offsets
+into the TCP/UDP payload, and `end` is exclusive.
+
+All inferred candidates are retained, including overlapping fields of different
+types. Messages without inferred fields have an empty `fields` array. No
+ground-truth labels or correctness filtering are applied.
+
+`message_index` is the 1-based position in the imported message list, **not** a
+PCAP frame number: packets ignored by the loader (e.g. those without payload)
+are not exported. Identical payloads in distinct imported messages remain separate.
+
+`--no-evaluation` skips ground-truth comparison and all evaluation reports;
+omit it to export raw fields and also run the usual evaluation. Existing behavior
+is unchanged when neither option is supplied.
 
 ## Original Text
 
@@ -54,6 +81,5 @@ Local building of the container
 
 ## Running
 ```sudo docker run --rm -it -v "$PWD":/app fieldhunter```
-
 
 

@@ -24,6 +24,7 @@ from fieldhunter.inference.fieldtypesRelaxed import *
 from fieldhunter.inference.common import segmentedMessagesAndSymbols
 from fieldhunter.utils.base import Flows
 from fieldhunter.utils.eval import FieldTypeReport, GroundTruth
+from fieldhunter.utils.export import writeRawFields
 
 if __name__ == '__main__':
     parser = ArgumentParser(
@@ -32,6 +33,10 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--interactive', help='Open ipython prompt after finishing the analysis.',
                         action="store_true")
     parser.add_argument('-d', '--debug', help='Enable debug output.', action="store_true")
+    parser.add_argument('--export-raw', metavar='JSONFILE',
+                        help='Export all raw inferred fields per message to JSON, including overlaps.')
+    parser.add_argument('--no-evaluation', action='store_true',
+                        help='Skip ground-truth comparison and evaluation reports.')
     args = parser.parse_args()
     if args.debug:
         print("DEBUG")
@@ -89,6 +94,8 @@ if __name__ == '__main__':
     segmentedMessages, symbols = segmentedMessagesAndSymbols(sortedInferredTypes, messages)
 
     inferenceDuration = time() - inferenceStart
+    if args.export_raw:
+        writeRawFields(args.export_raw, messages, sortedInferredTypes, args.pcapfilename)
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     print(tabulate(
@@ -102,39 +109,40 @@ if __name__ == '__main__':
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    nontrivialSymbols = [sym for sym in symbols if len(sym.fields) > 1]
-    comparator = MessageComparator(specimens, layer=layer, relativeToIP=relativeToIP)
-    print("Dissection complete.")
-    comparator.pprintInterleaved(nontrivialSymbols)
-    print(f"\n   + {len(symbols)-len(nontrivialSymbols)} messages without any inferred fields.")
+    if not args.no_evaluation:
+        nontrivialSymbols = [sym for sym in symbols if len(sym.fields) > 1]
+        comparator = MessageComparator(specimens, layer=layer, relativeToIP=relativeToIP)
+        print("Dissection complete.")
+        comparator.pprintInterleaved(nontrivialSymbols)
+        print(f"\n   + {len(symbols)-len(nontrivialSymbols)} messages without any inferred fields.")
 
-    # calc FMS per message
-    print("Calculate FMS...")
-    message2quality = DissectorMatcher.symbolListFMS(comparator, symbols)
-    # write statistics to csv
-    writeReport(message2quality, inferenceDuration, comparator, "fieldhunter-literal",
-                filechecker.reportFullPath)
+        # calc FMS per message
+        print("Calculate FMS...")
+        message2quality = DissectorMatcher.symbolListFMS(comparator, symbols)
+        # write statistics to csv
+        writeReport(message2quality, inferenceDuration, comparator, "fieldhunter-literal",
+                    filechecker.reportFullPath)
 
-    # FTR validation: calculate TP/FP/FN ==> P/R per protocol and per type
-    infieldWorkbook = FieldTypeReport.newWorkbook()
-    for infields in sortedInferredTypes:
-        infieldReport = FieldTypeReport(infields, comparator, segmentedMessages)
-        infieldReport.addXLworksheet(infieldWorkbook, FieldTypeReport.ovTitle)
-    FieldTypeReport.saveWorkbook(infieldWorkbook, filechecker.pcapstrippedname)
+        # FTR validation: calculate TP/FP/FN ==> P/R per protocol and per type
+        infieldWorkbook = FieldTypeReport.newWorkbook()
+        for infields in sortedInferredTypes:
+            infieldReport = FieldTypeReport(infields, comparator, segmentedMessages)
+            infieldReport.addXLworksheet(infieldWorkbook, FieldTypeReport.ovTitle)
+        FieldTypeReport.saveWorkbook(infieldWorkbook, filechecker.pcapstrippedname)
 
-    # coverage
-    tpByteSum = sum(sum(
-            len(seg) for seg in msg
-            if isinstance(seg, TypedSegment) and comparator.lookupField(seg)[1] in GroundTruth.fieldtypes[seg.fieldtype]
-        ) for msg in segmentedMessages.values())
-    payloadSum = sum(len(msg.data) for msg in segmentedMessages.keys())
-    coverage = tpByteSum/payloadSum
-    print(f"Coverage (ratio of TP bytes): {coverage:.5f}")
-    # TODO quick and dirty hard coded filename, no checks.
-    import csv
-    with open("reports/fh-coverage.csv", "a") as covcsv:
-        covwriter = csv.writer(covcsv)
-        covwriter.writerow([filechecker.pcapstrippedname, tpByteSum, payloadSum, coverage])
+        # coverage
+        tpByteSum = sum(sum(
+                len(seg) for seg in msg
+                if isinstance(seg, TypedSegment) and comparator.lookupField(seg)[1] in GroundTruth.fieldtypes[seg.fieldtype]
+            ) for msg in segmentedMessages.values())
+        payloadSum = sum(len(msg.data) for msg in segmentedMessages.keys())
+        coverage = tpByteSum/payloadSum
+        print(f"Coverage (ratio of TP bytes): {coverage:.5f}")
+        # TODO quick and dirty hard coded filename, no checks.
+        import csv
+        with open("reports/fh-coverage.csv", "a") as covcsv:
+            covwriter = csv.writer(covcsv)
+            covwriter.writerow([filechecker.pcapstrippedname, tpByteSum, payloadSum, coverage])
 
     # interactive
     if args.interactive:
@@ -146,4 +154,3 @@ A combination per message is in:
     segmentedMessages, symbols
 """)
         IPython.embed()
-
