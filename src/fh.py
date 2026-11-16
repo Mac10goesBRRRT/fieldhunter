@@ -21,6 +21,7 @@ from fieldhunter.inference.fieldtypes import *
 from fieldhunter.inference.common import segmentedMessagesAndSymbols
 from fieldhunter.utils.base import Flows
 from fieldhunter.utils.eval import FieldTypeReport
+from fieldhunter.utils.export import writeRawFields
 
 
 
@@ -31,6 +32,10 @@ if __name__ == '__main__':
     parser.add_argument('pcapfilename', help='Filename of the PCAP to load.')
     parser.add_argument('-i', '--interactive', help='open ipython prompt after finishing the analysis.',
                         action="store_true")
+    parser.add_argument('--export-raw', metavar='JSONFILE',
+                        help='Export all raw inferred fields per message to JSON, including overlaps.')
+    parser.add_argument('--no-evaluation', action='store_true',
+                        help='Skip ground-truth comparison and evaluation reports.')
     # Pointless options: FH requires TCP/UDP over IP (FH, Section 6.6)
     # parser.add_argument('-l', '--layer', type=int, default=2,
     #                     help='Protocol layer relative to IP to consider. Default is 2 layers above IP '
@@ -82,6 +87,8 @@ if __name__ == '__main__':
     segmentedMessages, symbols = segmentedMessagesAndSymbols(sortedInferredTypes, messages)
 
     inferenceDuration = time() - inferenceStart
+    if args.export_raw:
+        writeRawFields(args.export_raw, messages, sortedInferredTypes, args.pcapfilename)
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # statistics for all types
     print(tabulate(
@@ -95,27 +102,27 @@ if __name__ == '__main__':
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    nontrivialSymbols = [sym for sym in symbols if len(sym.fields) > 1]
-    comparator = MessageComparator(specimens, layer=layer, relativeToIP=relativeToIP)
-    print("Dissection complete.")
-    comparator.pprintInterleaved(nontrivialSymbols)
-    print(f"\n   + {len(symbols)-len(nontrivialSymbols)} messages without any inferred fields.")
+    if not args.no_evaluation:
+        nontrivialSymbols = [sym for sym in symbols if len(sym.fields) > 1]
+        comparator = MessageComparator(specimens, layer=layer, relativeToIP=relativeToIP)
+        print("Dissection complete.")
+        comparator.pprintInterleaved(nontrivialSymbols)
+        print(f"\n   + {len(symbols)-len(nontrivialSymbols)} messages without any inferred fields.")
 
-    # calc FMS per message
-    print("Calculate FMS...")
-    message2quality = DissectorMatcher.symbolListFMS(comparator, symbols)
-    # write statistics to csv
-    writeReport(message2quality, inferenceDuration, comparator, "fieldhunter-literal",
-                filechecker.reportFullPath)
+        # calc FMS per message
+        print("Calculate FMS...")
+        message2quality = DissectorMatcher.symbolListFMS(comparator, symbols)
+        # write statistics to csv
+        writeReport(message2quality, inferenceDuration, comparator, "fieldhunter-literal",
+                    filechecker.reportFullPath)
 
-    # FTR validation: calculate TP/FP/FN ==> P/R per protocol and per type
-    infieldWorkbook = FieldTypeReport.newWorkbook()
-    for infields in sortedInferredTypes:
-        infieldReport = FieldTypeReport(infields, comparator, segmentedMessages)
-        infieldReport.addXLworksheet(infieldWorkbook, FieldTypeReport.ovTitle)
-    FieldTypeReport.saveWorkbook(infieldWorkbook, filechecker.pcapstrippedname)
+        # FTR validation: calculate TP/FP/FN ==> P/R per protocol and per type
+        infieldWorkbook = FieldTypeReport.newWorkbook()
+        for infields in sortedInferredTypes:
+            infieldReport = FieldTypeReport(infields, comparator, segmentedMessages)
+            infieldReport.addXLworksheet(infieldWorkbook, FieldTypeReport.ovTitle)
+        FieldTypeReport.saveWorkbook(infieldWorkbook, filechecker.pcapstrippedname)
 
     # interactive
     if args.interactive:
         IPython.embed()
-
